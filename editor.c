@@ -43,13 +43,45 @@ static int total_pages()
 }
 
 /*
- * Draws the editor header, including status information.
+ * The header is static and only needs to be drawn when the screen is cleared,
+ * as opposed to the footer, which contains dynamic information. This draws
+ * the static header, as well as the horizontal rule at the bottom of the page.
  */
-static void draw_header_and_footer(void)
+static void draw_frame(void)
 {
     unsigned int percent;
     unsigned char old_x, old_y;
-    char header_str[41], footer_str[41];
+    char header_str[41];
+
+    /* Save current cursor position */
+    old_x = wherex();
+    old_y = wherey();
+
+    /* Move to top-left to draw the header */
+    gotoxy(0, 0);
+
+    // Draw the header
+    sprintf(header_str, "Editing Entry | Ctrl+S Save; Ctrl+K Up");
+    printf("%-40s", header_str);
+    print_horizontal_rule();
+
+    // draw horizontal rule that belongs above the footer.
+    gotoxy(0, EDITOR_MAX_Y + 1);
+    print_horizontal_rule();
+
+    /* Restore cursor to its original position */
+    gotoxy(old_x, old_y);
+    cursor(1);
+}
+
+/*
+ * Draws the editor footer, including position information.
+ */
+static void update_footer(void)
+{
+    unsigned int percent;
+    unsigned char old_x, old_y;
+    char footer_str[41];
 
     /* Save current cursor position */
     old_x = wherex();
@@ -60,20 +92,11 @@ static void draw_header_and_footer(void)
      * multiplication to prevent potential overflow, as current_size * 100
      * could exceed the 65535 limit of a 16-bit unsigned int.
      */
-    percent = (unsigned int)(((unsigned long)editor_buffer_cursor * 100) / editor_buffer_size);
+    percent = (unsigned int)(((unsigned long)max_buffer_cursor * 100) / editor_buffer_size);
 
-    /* Move to top-left to draw the header */
-    gotoxy(0, 0);
-
-    // Draw the header
-    sprintf(header_str, "Ctrl+S Save | %u/%u (%u%%) | [%d,%d]", editor_buffer_cursor, editor_buffer_size, percent, old_x, old_y);
-    printf("%-40s", header_str);
-    print_horizontal_rule();
-
-    gotoxy(0, EDITOR_MAX_Y + 1);
-    print_horizontal_rule();
-    sprintf(footer_str, "Page %d of %d | Idx %d of %d", get_current_page_number() + 1, total_pages() + 1, editor_buffer_cursor, max_buffer_cursor);
-    printf("%-39s", footer_str);
+    gotoxy(0, EDITOR_MAX_Y + 2);
+    sprintf(footer_str, "Pg %d/%d | %d%%", get_current_page_number() + 1, total_pages() + 1, percent);
+    printf("%-15s", footer_str);
 
     /* Restore cursor to its original position */
     gotoxy(old_x, old_y);
@@ -123,6 +146,9 @@ static void render_buffer_page(int page_number)
 {
     int i;
 
+    clrscr();
+    draw_frame();
+
     gotoxy(0, EDITOR_START_Y);
 
     for (i = page_number * EDITOR_PAGE_SIZE; i < (page_number + 1) * EDITOR_PAGE_SIZE; i++)
@@ -135,9 +161,13 @@ static void render_buffer_page(int page_number)
         if (editor_buffer[i] == NULL)
         {
             cputc(' ');
-        } else if (editor_buffer[i] <= 8) {
+        }
+        else if (editor_buffer[i] <= 8)
+        {
             cputc('.');
-        } else {
+        }
+        else
+        {
             cputc(editor_buffer[i]);
         }
     }
@@ -155,14 +185,16 @@ void run_editor(char *buffer, unsigned int buffer_size)
     /* Determine the initial length of the content. */
     max_buffer_cursor = strlen(editor_buffer);
 
+    // draw the initial page
     render_buffer_page(0);
+    
     gotoxy(0, EDITOR_START_Y);
 
     /* Main editor loop */
     for (;;)
     {
         /* Draw the header on every loop to keep the size / page number updated */
-        draw_header_and_footer();
+        update_footer();
 
         key = cgetc(); /* Wait for a keypress */
 
@@ -280,9 +312,12 @@ void run_editor(char *buffer, unsigned int buffer_size)
 
             // move EDITOR_MAX_X characters back in the buffer
             // or to index 0 if we are on the first line of the first page
-            if (editor_buffer_cursor < EDITOR_MAX_X) {
+            if (editor_buffer_cursor < EDITOR_MAX_X)
+            {
                 editor_buffer_cursor = 0;
-            } else {
+            }
+            else
+            {
                 editor_buffer_cursor -= EDITOR_MAX_X + 1;
             }
 

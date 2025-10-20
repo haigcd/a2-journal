@@ -38,7 +38,6 @@ int main(void)
 
             // buffer is now loaded, fall through to editor:
         case MENU_CHOICE_NEW:
-            clrscr();
             run_editor(entry_buffer, MAX_ENTRY_SIZE);
 
             clrscr();
