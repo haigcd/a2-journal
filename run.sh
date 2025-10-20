@@ -3,6 +3,7 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+# TODO: don't harcode to my home directory
 AC="java -jar /home/haig/Downloads/AppleCommander-12.0/app/cli-ac/build/libs/AppleCommander-ac-12.0.jar"
 
 PRODOS_NAME=JOURNAL
